@@ -37,7 +37,8 @@ int main(int argc, char* argv[])
 
           if (paquet.num_seq == numero_paquet_attendu) {
 
-        
+            printf("J'ai recu le bon numero de paquet \n");
+            
             for (int i=0; i<paquet.lg_info; i++) {
                 message[i] = paquet.info[i];
             }
@@ -52,7 +53,7 @@ int main(int argc, char* argv[])
           }
 
           else {
-            envoyer_acquittement(ACK);
+            printf("Je n'ai pas recu le bon numéro donc j'ignore le paquet\n");
           }
 
         }

@@ -20,7 +20,10 @@ int main(int argc, char* argv[])
     unsigned char message[MAX_INFO]; /* message de l'application */
     int taille_msg; /* taille du message */
     paquet_t paquet; /* paquet utilisé par le protocole */
-    int numero_paquet = 0;  // numero du premier paquet que l'on va envoyer 
+    paquet_t paquet_acquittement; /* paquet qui va contenir les acquittements */
+    int numero_paquet = 0;  /* numero du premier paquet que l'on va envoyer */
+    int bien_recu;          /* variable indiquant si le paquet a ete recu correctement par le recepteur */
+
 
     init_reseau(EMISSION);
 
@@ -42,18 +45,15 @@ int main(int argc, char* argv[])
         paquet.lg_info = taille_msg;
         paquet.type = DATA;
 
-
         paquet.num_seq = numero_paquet;
 
         init_paquet_avant_envoie(&paquet);
 
         /* remise à la couche reseau */
 
-        int bien_recu = 0;
-        int timer_ecoule = 0;
-        paquet_t paquet_acquittement;
+        bien_recu = 0;
 
-        do {
+        while(bien_recu == 0) {                      // boucle d'envoi du paquet
 
           vers_reseau(&paquet);   // on envoie le paquet
 
@@ -62,23 +62,14 @@ int main(int argc, char* argv[])
           int result_attendre = attendre();
 
           if (result_attendre == -1) {    // si le paquet acq est arrivé
-            de_reseau(&paquet_acquittement);  // on le recupere 
-            arret_temporisateur();
-            bien_recu = 0;
-            timer_ecoule = 0;
-          }
 
-          else {  // si le timer est ecoule
-            bien_recu = 0;
-            timer_ecoule = 1;
-            arret_temporisateur();
-          }
-
-          if (timer_ecoule != 1) {    // si le timer n'est pas ecoule et que le paquet est arrivé dans les temps 
+            arret_temporisateur();        // on arrete le tempo
+            de_reseau(&paquet_acquittement) ;  // on recupere le paquet
 
             printf("Acquittement recu\n");
 
             if (paquet_acquittement.type == ACK) {    // si ACK
+              
               bien_recu = 1;          // on indique que le paquet a été recu sans erreur
               
               if (numero_paquet == 0) {   // je change le num du prochain paquet a envoyer
@@ -96,10 +87,10 @@ int main(int argc, char* argv[])
               printf("Mauvais type recu.\n");
               bien_recu = 0;
             }
-          
+
           }
 
-        } while (bien_recu == 0);
+        } 
 
 
 
