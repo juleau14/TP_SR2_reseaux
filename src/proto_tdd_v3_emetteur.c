@@ -20,79 +20,85 @@ int main(int argc, char* argv[])
     unsigned char message[MAX_INFO]; /* message de l'application */
     int taille_msg; /* taille du message */
     paquet_t paquet; /* paquet utilisé par le protocole */
-    int taille_fenetre_emission = argv[1];  /* taille de la fenetre passée en argument */ 
-    int pointeur_courant = 0;               /* pointeur courant dans la fenetre d'emission
+    paquet_t paquet_acquittement; /* paquet qui va contenir les acquittements */
+    int numero_paquet = 0;  /* numero du premier paquet que l'on va envoyer */
+    int bien_recu;          /* variable indiquant si le paquet a ete recu correctement par le recepteur */
+    int curseur = 0;            /* curseur d'envoi de la fenetre d'emission */
+    int borne_inf;          /* borne inferieur de la fenetre d'emission */
+    int borne_sup;          /* borne superieur de la fenetre d'emission */
+    int taille_fenetre;     /* taille de la fenetre d'emission */
+    int avancement_fenetre; /* valeur d'avancement de la fenetre */
+    int N;                  /* valeur à laquelle le curseur doit retourner */
+    int nb_acq_recus;       /* nb d'acq deja recu pour chaque envoie */
+    int dernier_acqu_recu;   /* stock le num du dernier ack recu */
+    int acqu_recu;           /* stock le num de l'ack recu */
+
+    if (argc < 2) {
+      taille_fenetre = 7;
+    }
+
+    else {
+      taille_fenetre = argv[1];
+      borne_inf = 0;
+      borne_sup = taille_fenetre;
+    }
+
+    paquet_t fenetre[taille_fenetre];
 
     init_reseau(EMISSION);
 
     printf("[TRP] Initialisation reseau : OK.\n");
     printf("[TRP] Debut execution protocole transport.\n");
 
-    /* lecture de donnees provenant de la couche application */
-    de_application(message, &taille_msg);
+    /* création de la premiere fenetre d'emission */
+    for (int i = 0; i < taille_fenetre; i++) {
+
+      de_application(message, taille_msg);    // lecture des données
+
+      /* creation du paquet */
+      for (int j=0; i=j<taille_msg; i=j++) {  
+          paquet.info[j] = message[j];
+      }
+
+      paquet.lg_info = taille_msg;
+      paquet.type = DATA;
+
+      paquet.num_seq = numero_paquet;
+
+      init_paquet_avant_envoie(&paquet);
+
+      fenetre[i] = paquet;  // remplissage de fenetre 
+
+    }
 
     /* tant que l'émetteur a des données à envoyer */
-    while ( taille_msg != 0 ) {
-
-        /* construction paquet */
-        for (int i=0; i<taille_msg; i++) {
-            paquet.info[i] = message[i];
-        }
-        paquet.lg_info = taille_msg;
-        paquet.type = DATA;
-
-        init_paquet_avant_envoie(&paquet);
+    while ( (taille_msg != 0) || (curseur != borne_inf) ) {
 
         /* remise à la couche reseau */
 
-        int bien_recu = 0;
-        int timer_ecoule = 0;
-        paquet_t paquet_acquittement;
+        while (curseur < taille_fenetre) {
+          vers_reseau(&fenetre[curseur]);
+          curseur++;
+        }
 
-        do {
+        nb_acq_recus = 0;
+        depart_temporisateur(400);
 
-          vers_reseau(&paquet);   // on envoie le paquet
-
-          depart_temporisateur(400);
-
-          int result_attendre = attendre();
-
-          if (result_attendre == -1) {    // si le paquet acq est arrivé
-            de_reseau(&paquet_acquittement);  // on le recupere 
-            arret_temporisateur();
-            bien_recu = 0;
-            timer_ecoule = 0;
-          }
-
-          else {  // si le timer est ecoule
-            bien_recu = 0;
-            timer_ecoule = 1;
-            arret_temporisateur();
-          }
-
-          if (timer_ecoule != 1) {    // si le timer n'est pas ecoule et que le paquet est arrivé dans les temps 
-
-            printf("Acquittement recu\n");
-
-            if (paquet_acquittement.type == ACK) {    // si ACK
-              bien_recu = 1;          // on indique que le paquet a été recu sans erreur
-            }
-
-            else if (paquet_acquittement.type == NACK) {  // sinon si NACK
-              bien_recu = 0;          // on indique que le paquet n'a pas ete recu correctement
-            }
-
-            else {                    // sinon
-              printf("Mauvais type recu.\n");
-              bien_recu = 0;
-            }
+        while (nb_acq_recus < taille_fenetre && attendre() == -1) {
+          nb_acq_recus++;
+          de_reseau(&paquet_acquittement);
+          acqu_recu = paquet_acquittement.num_seq;
           
+          if (acqu_recu == dernier_acqu_recu) {
+            printf("Un paquet s'est perdu car j'ai recu deux ack identiques.\n");
+            break;
           }
+          dernier_acqu_recu = acqu_recu;
+        }
 
-        } while (bien_recu == 0);
 
 
-      /* lecture des donnees suivantes de la couche application */
+      /* mise a jour de fenetre en fonction de l'avancement */
       de_application(message, &taille_msg);
     }
 

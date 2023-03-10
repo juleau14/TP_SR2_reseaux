@@ -67,25 +67,13 @@ int main(int argc, char* argv[])
             de_reseau(&paquet_acquittement) ;  // on recupere le paquet
 
             printf("Acquittement recu\n");
-
-            if (paquet_acquittement.type == ACK) {    // si ACK
               
-              bien_recu = 1;          // on indique que le paquet a été recu sans erreur
-              
-              if (numero_paquet == 0) {   // je change le num du prochain paquet a envoyer
-                numero_paquet = 1;
-              } else {
-                numero_paquet = 0;
-              }
-            }
-
-            else if (paquet_acquittement.type == NACK) {  // sinon si NACK
-              bien_recu = 0;          // on indique que le paquet n'a pas ete recu correctement
-            }
-
-            else {                    // sinon
-              printf("Mauvais type recu.\n");
-              bien_recu = 0;
+            bien_recu = 1;          // on indique que le paquet a été recu sans erreur
+            
+            if (numero_paquet == 0) {   // je change le num du prochain paquet a envoyer
+              numero_paquet = 1;
+            } else {
+              numero_paquet = 0;
             }
 
           }

@@ -35,6 +35,8 @@ int main(int argc, char* argv[])
 
         if (verifier_somme_ctrl(&paquet) == 0) {
 
+          envoyer_acquittement(ACK);
+
           if (paquet.num_seq == numero_paquet_attendu) {
 
             printf("J'ai recu le bon numero de paquet \n");
@@ -59,7 +61,7 @@ int main(int argc, char* argv[])
         }
 
         else {
-          printf("Il y a un pb avec la somme de ctrl, j'ai envoyé un NACK.\n");
+          printf("Il y a un pb avec la somme de ctrl, je ne renvoie rien.\n");
         }
 
         printf("FIN = %d", fin);

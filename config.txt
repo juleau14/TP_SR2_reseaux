@@ -9,11 +9,11 @@ FICHIER_OUT fichiers/imgout.jpg
 # Initialisation reseau
 #------------------------
 # Emetteur
-PROBA_PERTE_E 0.05
-PROBA_ERREUR_E 0.05
+PROBA_PERTE_E 0.01
+PROBA_ERREUR_E 0.01
 # Recepteur
-PROBA_PERTE_R 0.05
-PROBA_ERREUR_R 0.05
+PROBA_PERTE_R 0.01
+PROBA_ERREUR_R 0.01
 # Pertes Connexion / Deconnexion
 # (0=pas de perte, 1=perte)
 PERTE_CON_REQ 0

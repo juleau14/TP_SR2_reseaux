@@ -51,12 +51,10 @@ int verifier_somme_ctrl(paquet_t * paquet) {
   }
 
   if (nouvelle_somme != paquet->somme_ctrl) {
-    envoyer_acquittement(NACK);
     return -1;
   }
 
   else {
-    envoyer_acquittement(ACK);
     return 0;
   }
 
