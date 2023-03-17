@@ -23,15 +23,15 @@ int main(int argc, char* argv[])
     paquet_t paquet_acquittement; /* paquet qui va contenir les acquittements */
     int numero_paquet = 0;  /* numero du premier paquet que l'on va envoyer */
     int bien_recu;          /* variable indiquant si le paquet a ete recu correctement par le recepteur */
-    int curseur = 0;            /* curseur d'envoi de la fenetre d'emission */
+    int curseur = 0;        /* curseur d'envoi de la fenetre d'emission */
     int borne_inf;          /* borne inferieur de la fenetre d'emission */
     int borne_sup;          /* borne superieur de la fenetre d'emission */
     int taille_fenetre;     /* taille de la fenetre d'emission */
     int avancement_fenetre; /* valeur d'avancement de la fenetre */
     int N;                  /* valeur à laquelle le curseur doit retourner */
-    int nb_acq_recus;       /* nb d'acq deja recu pour chaque envoie */
-    int dernier_acqu_recu;   /* stock le num du dernier ack recu */
-    int acqu_recu;           /* stock le num de l'ack recu */
+    int nb_acq_recus;       /* nb d'acq deja recus normalement pour chaque envoie */
+    int dernier_acqu_recu;  /* stock le numseq du dernier ack recu */
+    int acqu_recu;          /* stock le numseq de l'ack recu */
 
     if (argc < 2) {
       taille_fenetre = 7;
@@ -44,63 +44,36 @@ int main(int argc, char* argv[])
     }
 
     paquet_t fenetre[taille_fenetre];
+    paquet_t paquet;
 
     init_reseau(EMISSION);
 
     printf("[TRP] Initialisation reseau : OK.\n");
     printf("[TRP] Debut execution protocole transport.\n");
 
-    /* création de la premiere fenetre d'emission */
-    for (int i = 0; i < taille_fenetre; i++) {
+    init_premiere_fenetre(fenetre, &curseur, taille_fenetre, &taille_msg);
+    
+    while (taille_msg != 0 || curseur != borne_inf) {   // tant qu'on lit encore des données
 
-      de_application(message, taille_msg);    // lecture des données
+      while (curseur < taille_fenetre) {
+        if (curseur == 0) {
+          depart_temporisateur(400);
+        }
 
-      /* creation du paquet */
-      for (int j=0; i=j<taille_msg; i=j++) {  
-          paquet.info[j] = message[j];
+        vers_reseau(&fenetre[curseur]);
+
+        curseur++;
+
       }
 
-      paquet.lg_info = taille_msg;
-      paquet.type = DATA;
+      if (attendre() == -1) {
+        
+      }
 
-      paquet.num_seq = numero_paquet;
-
-      init_paquet_avant_envoie(&paquet);
-
-      fenetre[i] = paquet;  // remplissage de fenetre 
+      }
 
     }
 
-    /* tant que l'émetteur a des données à envoyer */
-    while ( (taille_msg != 0) || (curseur != borne_inf) ) {
-
-        /* remise à la couche reseau */
-
-        while (curseur < taille_fenetre) {
-          vers_reseau(&fenetre[curseur]);
-          curseur++;
-        }
-
-        nb_acq_recus = 0;
-        depart_temporisateur(400);
-
-        while (nb_acq_recus < taille_fenetre && attendre() == -1) {
-          nb_acq_recus++;
-          de_reseau(&paquet_acquittement);
-          acqu_recu = paquet_acquittement.num_seq;
-          
-          if (acqu_recu == dernier_acqu_recu) {
-            printf("Un paquet s'est perdu car j'ai recu deux ack identiques.\n");
-            break;
-          }
-          dernier_acqu_recu = acqu_recu;
-        }
-
-
-
-      /* mise a jour de fenetre en fonction de l'avancement */
-      de_application(message, &taille_msg);
-    }
 
     printf("[TRP] Fin execution protocole transfert de donnees (TDD).\n");
     return 0;

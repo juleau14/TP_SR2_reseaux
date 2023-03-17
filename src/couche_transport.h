@@ -51,4 +51,8 @@ int verifier_somme_ctrl(paquet_t * paquet);
 
 int controler_acquittement(paquet_t * paquet);
 
+void init_premiere_fenetre(paquet_t * fenetre, int * curseur, int taille_fenetre, int * taille_message);
+
+void decaler_fenetre(paquet_t * fenetre, int nb_decalage, int taille_fenetre);
+
 #endif
