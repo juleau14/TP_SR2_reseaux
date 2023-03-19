@@ -11,70 +11,113 @@
 #include "application.h"
 #include "couche_transport.h"
 #include "services_reseau.h"
+#include <stdlib.h>
 
 /* =============================== */
 /* Programme principal - émetteur  */
 /* =============================== */
 int main(int argc, char* argv[])
 {
-    unsigned char message[MAX_INFO]; /* message de l'application */
-    int taille_msg; /* taille du message */
-    paquet_t paquet; /* paquet utilisé par le protocole */
-    paquet_t paquet_acquittement; /* paquet qui va contenir les acquittements */
-    int numero_paquet = 0;  /* numero du premier paquet que l'on va envoyer */
-    int bien_recu;          /* variable indiquant si le paquet a ete recu correctement par le recepteur */
-    int curseur = 0;        /* curseur d'envoi de la fenetre d'emission */
-    int borne_inf;          /* borne inferieur de la fenetre d'emission */
-    int borne_sup;          /* borne superieur de la fenetre d'emission */
-    int taille_fenetre;     /* taille de la fenetre d'emission */
-    int avancement_fenetre; /* valeur d'avancement de la fenetre */
-    int N;                  /* valeur à laquelle le curseur doit retourner */
-    int nb_acq_recus;       /* nb d'acq deja recus normalement pour chaque envoie */
-    int dernier_acqu_recu;  /* stock le numseq du dernier ack recu */
-    int acqu_recu;          /* stock le numseq de l'ack recu */
+  init_reseau(EMISSION);
+  int taille_fenetre;
 
-    if (argc < 2) {
-      taille_fenetre = 7;
+  if (argc > 1) {
+    taille_fenetre = atoi(argv[1]);  
+  }
+
+  else {
+    taille_fenetre = 7;
+  }
+
+  paquet_t ack_paquet;
+  paquet_t fenetre[16];
+  unsigned char message[MAX_INFO];
+  int taille_message;
+  int borne_inf = 0;
+  int curseur = 0;
+  int recu;
+  int index;
+
+  de_application(message, &taille_message);
+
+  while (taille_message > 0) {
+
+    if (dans_fenetre(borne_inf, curseur, taille_fenetre)) {
+
+      for (int i = 0; i < taille_message; i++) {
+        fenetre[curseur].info[i] = message[i];
+      }
+
+      fenetre[curseur].type = DATA;
+      fenetre[curseur].lg_info = taille_message;
+      fenetre[curseur].num_seq = curseur;
+      init_paquet_avant_envoie(&fenetre[curseur]);    // init de la somme de controle 
+
+      vers_reseau(&fenetre[curseur]);
+
+      if (curseur == borne_inf) {
+        depart_temporisateur(400);
+      }
+
+      if (curseur == 15) {
+        curseur = 0;
+      } else {
+        curseur++;
+      }
+
+      de_application(message, &taille_message);
+
     }
 
     else {
-      taille_fenetre = argv[1];
-      borne_inf = 0;
-      borne_sup = taille_fenetre;
-    }
 
-    paquet_t fenetre[taille_fenetre];
-    paquet_t paquet;
+      recu = attendre();
 
-    init_reseau(EMISSION);
+      if (recu == -1) {
 
-    printf("[TRP] Initialisation reseau : OK.\n");
-    printf("[TRP] Debut execution protocole transport.\n");
+        de_reseau(&ack_paquet);
 
-    init_premiere_fenetre(fenetre, &curseur, taille_fenetre, &taille_msg);
-    
-    while (taille_msg != 0 || curseur != borne_inf) {   // tant qu'on lit encore des données
+        if (verifier_somme_ctrl(&ack_paquet) == 0 && dans_fenetre(borne_inf, ack_paquet.num_seq, taille_fenetre)) {
 
-      while (curseur < taille_fenetre) {
-        if (curseur == 0) {
-          depart_temporisateur(400);
+          if (ack_paquet.num_seq == 15) {
+            ack_paquet.num_seq = 0;
+          } else {
+            ack_paquet.num_seq++;
+          }
+          borne_inf = ack_paquet.num_seq;
+          arret_temporisateur();
+
+          if (borne_inf != curseur) {
+
+            depart_temporisateur(400);
+
+          }
+
         }
 
-        vers_reseau(&fenetre[curseur]);
-
-        curseur++;
-
       }
 
-      if (attendre() == -1) {
-        
-      }
+      else {
+
+        index = borne_inf;
+        depart_temporisateur(400);
+
+        while (index != curseur) {
+
+          vers_reseau(&fenetre[index]);
+          if (index == 15) {
+            index = 0;
+          } else {
+            index++;
+          }
+        }
 
       }
 
     }
 
+  }
 
-    printf("[TRP] Fin execution protocole transfert de donnees (TDD).\n");
-    return 0;
+  printf("[TRP] Fin execution protocole transfert de donnees (TDD).\n");
+  return 0;
 }

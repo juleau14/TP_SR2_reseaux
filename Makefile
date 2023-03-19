@@ -3,7 +3,7 @@ SYS = -Wall -pedantic -DUNIX -std=gnu99
 INC = -I.
 
 # ============================= #
-NOM_ETU = NOM_PRENOM_A_CHANGER
+NOM_ETU = CAMUZETJULES
 # ============================= #
 
 SRCDIR = src

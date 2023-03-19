@@ -28,52 +28,56 @@ int main(int argc, char* argv[])
 {
     unsigned char message[MAX_INFO]; /* message pour l'application */
     paquet_t paquet; /* paquet utilisé par le protocole */
+    paquet_t acquittement;
     int fin = 0; /* condition d'arrêt */
-    int numero_paquet_attendu = 0; // numero du premier paquet que l'on va recevoir
+    int numseq_attendu = 0; // numero du premier paquet que l'on va recevoir
+    int dernier_numseq_correct = 0;
+
+    acquittement.lg_info = 0;
+    acquittement.type = ACK;
 
     init_reseau(RECEPTION);
 
     printf("[TRP] Initialisation reseau : OK.\n");
     printf("[TRP] Debut execution protocole transport.\n");
+    while ( fin == 0 ) {
 
-    /* tant que le récepteur reçoit des données */
-    while ( !fin ) {
+      de_reseau(&paquet);
 
-        // attendre(); /* optionnel ici car de_reseau() fct bloquante */
-        de_reseau(&paquet);
 
-        if (verifier_somme_ctrl(&paquet) == 0) {
+      if ((verifier_somme_ctrl(&paquet) == 0) && paquet.num_seq == numseq_attendu) {
 
-          if (paquet.num_seq == numero_paquet_attendu) {
+        dernier_numseq_correct = paquet.num_seq;
 
-            printf("J'ai recu le bon numero de paquet \n");
-            
-            for (int i=0; i<paquet.lg_info; i++) {
-                message[i] = paquet.info[i];
-            }
-            /* remise des données à la couche application */
-            fin = vers_application(message, paquet.lg_info);
+        acquittement.num_seq = paquet.num_seq;
+        init_paquet_avant_envoie(&acquittement);
 
-            if (numero_paquet_attendu == 0) {
-              numero_paquet_attendu = 1;
-            } else {
-              numero_paquet_attendu = 0;
-            }
-          }
+        vers_reseau(&acquittement);
 
-          else {
-            printf("Je n'ai pas recu le bon numéro donc j'ignore le paquet\n");
-          }
-
+        for (int i = 0; i <  paquet.lg_info; i++) {
+          message[i] = paquet.info[i];
         }
 
-        else {
-          printf("Il y a un pb avec la somme de ctrl, j'ai envoyé un NACK.\n");
-        }
+        fin = vers_application(message, paquet.lg_info);
 
-        printf("FIN = %d", fin);
+        printf("fin : %d\n", fin);
+
+        if (numseq_attendu == 15) {
+          numseq_attendu = 0;
+        } else {
+          numseq_attendu++;
+          }
+
+      }
+
+      else {
+
+        acquittement.num_seq = dernier_numseq_correct;
+        init_paquet_avant_envoie(&acquittement);
+        vers_reseau(&acquittement);
+
+      }
     }
-
     printf("[TRP] Fin execution protocole transport.\n");
     return 0;
 }
